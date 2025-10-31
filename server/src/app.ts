@@ -10,10 +10,26 @@ import { logger } from "./utils/logger.js";
 import { apiRouter } from "./routes/index.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { notFoundHandler } from "./middleware/notFound.js";
+import { connectDatabase } from "./config/database.js";
 
 const corsOrigins = env.FRONTEND_URL.split(",").map((origin) => origin.trim());
 
 const app = express();
+
+// Database connection for serverless
+let isConnected = false;
+app.use(async (_req, _res, next) => {
+  if (!isConnected && process.env.VERCEL === "1") {
+    try {
+      await connectDatabase();
+      isConnected = true;
+      logger.info("Database connected in Vercel serverless");
+    } catch (error) {
+      logger.error({ err: error }, "Failed to connect to database");
+    }
+  }
+  next();
+});
 
 app.use(
   pinoHttp({

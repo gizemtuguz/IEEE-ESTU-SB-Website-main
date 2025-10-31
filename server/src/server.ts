@@ -7,6 +7,9 @@ import { logger } from "./utils/logger.js";
 const port = env.PORT;
 let server: http.Server;
 
+// Export for Vercel serverless
+export default app;
+
 async function bootstrap() {
   await connectDatabase();
 
@@ -15,10 +18,13 @@ async function bootstrap() {
   });
 }
 
-bootstrap().catch((error) => {
-  logger.error({ err: error }, "Failed to start server");
-  process.exit(1);
-});
+// Only start server if not in Vercel environment
+if (process.env.VERCEL !== "1") {
+  bootstrap().catch((error) => {
+    logger.error({ err: error }, "Failed to start server");
+    process.exit(1);
+  });
+}
 
 async function gracefulShutdown(signal: string) {
   logger.info({ signal }, "Shutting down gracefully");
