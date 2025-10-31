@@ -1,92 +1,87 @@
 
 # IEEE ESTU Student Branch Website
 
-Modern, responsive redesign of the IEEE ESTU Student Branch website. The project mirrors the Figma concept at https://www.figma.com/design/EqoxI3b5Nbzn2Uf9bSHfRJ/Redesign-IEEE-ESTU-Website--Copy- and packages it as a Vite + React application with Turkish and English content.
+Modern, responsive redesign of the IEEE ESTU Student Branch website.
 
-## Highlights
-- Multi-language experience powered by a context provider (`tr` and `en`) with persistent selection.
-- Dark and light themes with automatic persistence and a quick toggle in the header.
-- Landing page sections for hero, committees, sub-teams, events, sponsors, blog, and IEEE Xtreme.
-- Event Application and Membership Application pages that embed Google Forms with loading and error states.
-- Responsive layout from mobile to desktop, built with Tailwind CSS Layer utilities, Radix UI primitives, and shadcn/ui components.
-- Reusable UI kit (buttons, cards, accordions, command palette, forms, etc.) ready for future feature work.
+## Features
+- Bilingual content with a context-based language switcher that remembers the last choice.
+- Dark / light theme toggle with localStorage persistence.
+- One-page landing layout for hero, about, teams, committees, sub-teams, events CTA, sponsors, contact, blog, and IEEE Xtreme.
+- Dedicated event application and membership application screens with rich forms, modal dialogs, and validation.
+- Fully responsive layout built on Tailwind CSS layers, Radix primitives, and shadcn/ui components.
+- Reusable UI kit (buttons, forms, accordions, carousel, charts, etc.) for future IEEE initiatives.
 
 ## Tech Stack
 - React 18 + TypeScript
-- Vite 6 build tooling
-- Tailwind CSS (layered output) for styling foundations
-- Radix UI primitives and shadcn/ui component wrappers
+- Vite 6
+- Tailwind CSS utilities
+- Radix UI + shadcn/ui wrappers
 - Lucide Icons, Embla Carousel, Sonner toasts
 
 ## Getting Started
 ### Prerequisites
-- Node.js 18 or newer
-- npm (comes with Node)
+- Node.js 18+
+- npm (bundled with Node)
 
-### Installation
+### Install dependencies
 ```bash
 npm install
 ```
 
-### Development server
+### Run the development server
 ```bash
 npm run dev
 ```
-The app runs at `http://localhost:5173` by default. Append `-- --host` to expose it on your network.
+The site is served at `http://localhost:5173`. Append `-- --host` to expose it on your LAN.
 
-### Production build
+### Create a production build
 ```bash
 npm run build
 ```
-The optimized assets are emitted to `dist/`.
+Bundles are emitted to `dist/`. Deploy the directory to any static host (Vercel, Netlify, Cloudflare Pages, etc.).
 
 ## Project Structure
 ```
 ├── src
-│   ├── App.tsx                # Routing, theme toggle, landing page assembly
+│   ├── App.tsx                # Entry point with routing & theme toggle
 │   ├── EventApplicationPage.tsx
 │   ├── MembershipPage.tsx
-│   ├── components             # Landing page sections and reusable UI pieces
+│   ├── EventsPage.tsx
+│   ├── components             # Landing sections and UI kit
+│   │   └── ui                 # shadcn/ui wrappers
 │   ├── contexts               # Language provider
-│   ├── styles                 # Global theme tokens
-│   ├── translations.ts        # Turkish and English copy
-│   └── guidelines / docs      # Setup notes for forms and membership
+│   ├── styles                 # Global CSS variables and utilities
+│   ├── assets                 # Images & icons
+│   └── translations.ts        # TR / EN copy
 ├── index.html
 ├── package.json
-└── vite.config.ts
+├── vite.config.ts
+└── README.md
 ```
 
-## Content & Customization
-### Language strings
-Edit `src/translations.ts` to update copy for both Turkish and English. The `LanguageProvider` in `src/contexts/LanguageContext.tsx` drives the entire localization experience.
+## Key Customizations
+- **Translations**: Edit `src/translations.ts` to update labels in both Turkish and English. Changes propagate automatically through the language context.
+- **Theme colors**: Global tokens live in `src/index.css` and `src/styles/globals.css`. Adjust to match refreshed branding or seasonal palettes.
+- **Navigation & sections**: Hero, About, Team, Committees, SubTeams, Sponsors, Blog, Contact, and Xtreme sections sit inside `src/components/`. Update the content or swap imagery there.
+- **Event application flow**: `src/EventApplicationPage.tsx` controls form fields, KVKK modal, and contact details. Replace the simulated submission block with a real API / Google Form integration.
+- **Membership onboarding**: `src/MembershipPage.tsx` renders membership benefits and the Google Form embed link. Update the form URL, FAQ copy, and social links in the same file.
+- **Events listing**: `src/EventsPage.tsx` holds quick cards and filtering scaffolding for upcoming events. Wire it up to a CMS or add static entries as needed.
 
-### Event application form
-1. Create your Google Form.
-2. Replace `GOOGLE_FORM_URL` inside `src/EventApplicationPage.tsx` with the embed URL that ends with `embedded=true`.
-3. Adjust the quick info cards, contact section, or styling as needed.
-Detailed instructions live in `src/EVENT_FORM_SETUP.md`.
-
-### Membership form
-1. Set `GOOGLE_FORM_BASE_URL` at the top of `src/MembershipPage.tsx`.
-2. Update benefit cards, contact information, and social links in the same file.
-3. The page honors light/dark theme and language preferences automatically.
-Configuration notes are captured in `src/MEMBERSHIP_SETUP.md`.
-
-### Landing page links
-Event CTA buttons currently navigate to the internal `/events` route. Update the `<a href>` inside `src/components/Events.tsx` if you need a Turkish slug like `/etkinlikler` or an external destination.
-
-### Branding
-Primary brand colors (`#00629B` and `#004f7c` for hover) are defined within component classes. Broader design tokens are inside `src/index.css` and `src/styles/globals.css`.
-
-## Deployment Notes
-- Build with `npm run build` and serve `dist/` via any static host (Vercel, Netlify, Cloudflare Pages, static Nginx, etc.).
-- `/events` or `/etkinlikler` routes render the event application page; `/membership` or `/uyelik` render the membership page. Configure your host to fallback to `index.html` for client-side routing.
-- For a dedicated subdomain such as `events.ieeeestu.org`, point DNS records to your host and deploy only `EventApplicationPage.tsx` if necessary (see `src/EVENT_FORM_SETUP.md` for both deployment models).
-
-## Attributions
-- UI components adapted from [shadcn/ui](https://ui.shadcn.com/) under the MIT license.
-- Imagery sourced from [Unsplash](https://unsplash.com) under the Unsplash License.
+## Routing & Deployment Notes
+- Client-side routes:  
+  - `/` renders the landing page.  
+  - `/events` (or `/etkinlikler`) opens the event application experience.  
+  - `/events/apply` (`/etkinlikler/basvuru`) and `/membership` (`/uyelik`) are also detected in `App.tsx`.  
+- Configure your production host to fall back to `index.html` for unknown routes so Vite’s SPA routing works.
+- To host only a sub-page (e.g., the event form) on a subdomain, build the project and serve the compiled `dist/` content with correct rewrites.
 
 ## Contributing
-Issues and pull requests are welcome. Please open a discussion before large changes so the design system and bilingual experience remain consistent.
-  
+1. Fork and clone the repository.
+2. Create a feature branch.
+3. Run `npm run dev` and make your changes.
+4. Open a pull request with screenshots for UI tweaks and explain how localization/theme were considered.
+
+## License & Credits
+- UI components leverage [shadcn/ui](https://ui.shadcn.com/) (MIT) and [Radix UI](https://www.radix-ui.com/).
+- Icons are provided by [Lucide](https://lucide.dev/).
+- Images and illustrations should comply with their respective licenses (current placeholders come from project assets).
