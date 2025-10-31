@@ -11,13 +11,24 @@ import {
   Linkedin,
   Twitter,
   Github,
+  Loader2,
 } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useState, useEffect } from "react";
+import { toast } from "sonner@2.0.3";
+import { api } from "../lib/api";
 
 export function Contact() {
   const { t } = useLanguage();
   const [isDark, setIsDark] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+  });
 
   useEffect(() => {
     // Check initial theme
@@ -38,6 +49,40 @@ export function Contact() {
 
     return () => observer.disconnect();
   }, []);
+
+  const handleInputChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await api.submitContactMessage({
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        subject: formData.subject,
+        message: formData.message,
+      });
+      toast.success(t.contact.form.success);
+      setFormData({
+        fullName: "",
+        email: "",
+        phone: "",
+        subject: "",
+        message: "",
+      });
+    } catch (error) {
+      toast.error(t.contact.form.error);
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const contactInfo = [
     {
@@ -163,15 +208,19 @@ export function Contact() {
                   <Send className="h-6 w-6" />
                   {t.contact.form.title}
                 </h3>
-                <form className="contact-form">
+                <form className="contact-form" onSubmit={handleSubmit}>
                   <div className="contact-form-row">
                     <div className="contact-form-field">
                       <label>
                         {t.contact.form.nameRequired}
                       </label>
                       <Input
+                        name="fullName"
+                        value={formData.fullName}
+                        onChange={handleInputChange}
                         placeholder={t.contact.form.namePlaceholder}
                         className="rounded-xl"
+                        required
                       />
                     </div>
                     <div className="contact-form-field">
@@ -180,8 +229,12 @@ export function Contact() {
                       </label>
                       <Input
                         type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
                         placeholder={t.contact.form.emailPlaceholder}
                         className="rounded-xl"
+                        required
                       />
                     </div>
                   </div>
@@ -192,6 +245,9 @@ export function Contact() {
                         {t.contact.form.phone}
                       </label>
                       <Input
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
                         placeholder={t.contact.form.phonePlaceholder}
                         className="rounded-xl"
                       />
@@ -201,6 +257,9 @@ export function Contact() {
                         {t.contact.form.subject}
                       </label>
                       <Input
+                        name="subject"
+                        value={formData.subject}
+                        onChange={handleInputChange}
                         placeholder={t.contact.form.subjectPlaceholder}
                         className="rounded-xl"
                       />
@@ -212,9 +271,13 @@ export function Contact() {
                       {t.contact.form.messageRequired}
                     </label>
                     <Textarea
+                      name="message"
+                      value={formData.message}
+                      onChange={handleInputChange}
                       placeholder={t.contact.form.messagePlaceholder}
                       rows={6}
                       className="rounded-xl resize-none"
+                      required
                     />
                   </div>
 
@@ -233,9 +296,19 @@ export function Contact() {
                     type="submit"
                     size="lg"
                     className="w-full text-white rounded-xl py-3 font-medium transition-all duration-200 ieee-gradient-button"
+                    disabled={isSubmitting}
                   >
-                    <Send className="mr-2 h-5 w-5" />
-                    {t.contact.form.send}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        {t.contact.form.sending}
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-5 w-5" />
+                        {t.contact.form.send}
+                      </>
+                    )}
                   </Button>
                 </form>
               </CardContent>

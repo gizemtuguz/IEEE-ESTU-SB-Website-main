@@ -1,160 +1,117 @@
-import { Card, CardContent } from './ui/card';
-import { Badge } from './ui/badge';
-import { Calendar, ArrowRight } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
-
-interface BlogPostData {
-  tr: {
-    title: string;
-    excerpt: string;
-    author: string;
-    category: string;
-    readTime: string;
-  };
-  en: {
-    title: string;
-    excerpt: string;
-    author: string;
-    category: string;
-    readTime: string;
-  };
-  date: string;
-  image: string;
-}
+import { useEffect, useMemo, useState } from "react";
+import { Card, CardContent } from "./ui/card";
+import { Badge } from "./ui/badge";
+import { Calendar, ArrowRight, RefreshCw } from "lucide-react";
+import { useLanguage } from "../contexts/LanguageContext";
+import { api } from "../lib/api";
+import type { BlogPost } from "../types/api";
 
 export function Blog() {
   const { t, language } = useLanguage();
-  
-  const blogPosts: BlogPostData[] = [
-    {
-      tr: {
-        title: "IEEE Xtreme Yarışmasına Hazırlık İpuçları",
-        excerpt: "24 saatlik programlama maratonu için etkili hazırlık stratejileri ve algoritmik problem çözme teknikleri.",
-        author: "Ahmet Yılmaz",
-        category: "Yarışma",
-        readTime: "5 dk"
-      },
-      en: {
-        title: "IEEE Xtreme Competition Preparation Tips",
-        excerpt: "Effective preparation strategies and algorithmic problem-solving techniques for the 24-hour programming marathon.",
-        author: "Ahmet Yılmaz",
-        category: "Competition",
-        readTime: "5 min"
-      },
-      date: "2025-08-15",
-      image: "https://images.unsplash.com/photo-1649451844813-3130d6f42f8a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2RpbmclMjBjb21wZXRpdGlvbiUyMGhhY2thdGhvbnxlbnwxfHx8fDE3NTcxODg4NDF8MA&ixlib=rb-4.1.0&q=80&w=1080"
-    },
-    {
-      tr: {
-        title: "Machine Learning'e Başlangıç Rehberi",
-        excerpt: "Yapay zeka ve makine öğrenmesi dünyasına adım atmak isteyenler için temel kavramlar ve öğrenme yolları.",
-        author: "Zeynep Kaya",
-        category: "Teknik",
-        readTime: "8 dk"
-      },
-      en: {
-        title: "Beginner's Guide to Machine Learning",
-        excerpt: "Essential concepts and learning paths for those wanting to step into the world of artificial intelligence and machine learning.",
-        author: "Zeynep Kaya",
-        category: "Technical",
-        readTime: "8 min"
-      },
-      date: "2025-08-10",
-      image: "https://images.unsplash.com/photo-1596496356933-9b6e0b186b88?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0ZWNobm9sb2d5JTIwd29ya3Nob3AlMjBzdHVkZW50c3xlbnwxfHx8fDE3NTcyNDYzOTJ8MA&ixlib=rb-4.1.0&q=80&w=1080"
-    },
-    {
-      tr: {
-        title: "IEEE Üyeliğinin Faydaları",
-        excerpt: "IEEE üyesi olmanın akademik ve profesyonel kariyerinize sağladığı avantajlar ve fırsatlar.",
-        author: "Mehmet Demir",
-        category: "IEEE",
-        readTime: "4 dk"
-      },
-      en: {
-        title: "Benefits of IEEE Membership",
-        excerpt: "Advantages and opportunities that IEEE membership provides for your academic and professional career.",
-        author: "Mehmet Demir",
-        category: "IEEE",
-        readTime: "4 min"
-      },
-      date: "2025-08-05",
-      image: "https://images.unsplash.com/photo-1672917187338-7f81ecac3d3f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBzdHVkZW50JTIwdGVhbSUyMG1lZXRpbmd8ZW58MXx8fHwxNzU3MjQ2MjcyfDA&ixlib=rb-4.1.0&q=80&w=1080"
-    }
-  ];
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const getCategoryColor = (category: string) => {
-    const categoryKey = category.toLowerCase();
-    if (categoryKey === "yarışma" || categoryKey === "competition") {
-      return "blog-card-badge-competition";
+  useEffect(() => {
+    const fetchPosts = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = (await api.getBlogPosts()) as BlogPost[];
+        setPosts(data);
+      } catch (err) {
+        setError((err as Error).message ?? "Blog yazıları yüklenemedi");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchPosts();
+  }, []);
+
+  const displayPosts = useMemo(() => {
+    return posts.slice(0, 3);
+  }, [posts]);
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "";
+    try {
+      return new Date(dateString).toLocaleDateString(
+        language === "tr" ? "tr-TR" : "en-US",
+        {
+          year: "numeric",
+          month: "long",
+          day: "numeric"
+        }
+      );
+    } catch {
+      return dateString;
     }
-    if (categoryKey === "teknik" || categoryKey === "technical") {
-      return "blog-card-badge-technical";
-    }
-    if (categoryKey === "ieee") {
-      return "blog-card-badge-ieee";
-    }
-    return "blog-card-badge-default";
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const locale = language === 'tr' ? 'tr-TR' : 'en-US';
-    return date.toLocaleDateString(locale, { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+  const estimateReadTime = (post: BlogPost) => {
+    const words = post.body?.split(/\s+/).length ?? 0;
+    const minutes = Math.max(3, Math.round(words / 200));
+    return language === "tr" ? `${minutes} dk` : `${minutes} min`;
+  };
+
+  const getCategory = (post: BlogPost) => {
+    if (!post.tags || post.tags.length === 0) {
+      return language === "tr" ? "Genel" : "General";
+    }
+    return post.tags[0];
   };
 
   return (
     <section id="blog" className="blog-section">
       <div className="blog-container">
         <div className="blog-header">
-          <h2 className="blog-title">
-            {t.blog.title}
-          </h2>
-          <p className="blog-subtitle">
-            {t.blog.subtitle}
-          </p>
+          <div>
+            <h2 className="blog-title">{t.blog.title}</h2>
+            <p className="blog-subtitle">{t.blog.subtitle}</p>
+          </div>
+          {isLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              {t.common.loading}
+            </div>
+          )}
         </div>
 
+        {error && <div className="blog-error">{error}</div>}
+
         <div className="blog-grid">
-          {blogPosts.map((post, index) => {
-            const postData = language === 'tr' ? post.tr : post.en;
-            
+          {displayPosts.map((post) => {
+            const category = getCategory(post);
+
             return (
-              <Card 
-                key={index} 
-                className="blog-card group"
-              >
-                <div className="blog-card-image-wrapper">
-                  <img
-                    src={post.image}
-                    alt={postData.title}
-                    className="blog-card-image"
-                  />
-                  <div className="blog-card-badge-wrapper">
-                    <Badge className={`blog-card-badge ${getCategoryColor(postData.category)}`}>
-                      {postData.category}
-                    </Badge>
+              <Card key={post._id} className="blog-card group">
+                {post.coverImage && (
+                  <div className="blog-card-image-wrapper">
+                    <img
+                      src={post.coverImage}
+                      alt={post.title}
+                      className="blog-card-image"
+                    />
+                    <div className="blog-card-badge-wrapper">
+                      <Badge className="blog-card-badge blog-card-badge-default">
+                        {category}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <CardContent className="blog-card-content">
-                  <h3 className="blog-card-title">
-                    {postData.title}
-                  </h3>
+                  <h3 className="blog-card-title">{post.title}</h3>
 
-                  <p className="blog-card-excerpt">
-                    {postData.excerpt}
-                  </p>
+                  <p className="blog-card-excerpt">{post.excerpt}</p>
 
                   <div className="blog-card-meta">
                     <div className="blog-card-date">
                       <Calendar className="h-3 w-3" />
-                      <span>{formatDate(post.date)}</span>
+                      <span>{formatDate(post.publishedAt)}</span>
                     </div>
-                    <span>{postData.readTime}</span>
+                    <span>{estimateReadTime(post)}</span>
                   </div>
 
                   <div className="blog-card-footer">
@@ -167,6 +124,14 @@ export function Blog() {
               </Card>
             );
           })}
+
+          {!isLoading && displayPosts.length === 0 && (
+            <div className="blog-empty">
+              {language === "tr"
+                ? "Henüz blog yazısı eklenmedi."
+                : "No blog posts yet."}
+            </div>
+          )}
         </div>
       </div>
     </section>

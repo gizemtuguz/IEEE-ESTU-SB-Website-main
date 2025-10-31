@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
-import { Mail, Phone, MapPin, Instagram, Linkedin, Twitter, Github, ExternalLink } from 'lucide-react';
+import { Mail, Phone, MapPin, Instagram, Linkedin, Twitter, Github, ExternalLink, Loader2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { toast } from 'sonner@2.0.3';
+import { api } from '../lib/api';
 
 export function Footer() {
   const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   const quickLinks = [
     { name: t.footer.links.about, href: '#about' },
@@ -27,6 +32,25 @@ export function Footer() {
     { icon: <Twitter className="h-5 w-5" />, name: 'Twitter', href: '#' },
     { icon: <Github className="h-5 w-5" />, name: 'GitHub', href: '#' }
   ];
+
+  const handleSubscribe = async () => {
+    if (!newsletterEmail) {
+      toast.error(t.footer.newsletter.error ?? 'Lütfen e-posta adresi girin.');
+      return;
+    }
+
+    setIsSubscribing(true);
+    try {
+      await api.subscribeToNewsletter({ email: newsletterEmail });
+      toast.success(t.footer.newsletter.success ?? 'Bültene abone oldunuz!');
+      setNewsletterEmail('');
+    } catch (error) {
+      toast.error(t.footer.newsletter.error ?? 'Abonelik sırasında hata oluştu.');
+      console.error(error);
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
 
   return (
     <footer className="bg-slate-900 dark:bg-black text-white">
@@ -134,14 +158,26 @@ export function Footer() {
             <div className="flex flex-col sm:flex-row gap-3 max-w-md">
               <input
                 type="email"
+                value={newsletterEmail}
+                onChange={(event) => setNewsletterEmail(event.target.value)}
                 placeholder={t.footer.newsletter.placeholder}
                 className="w-full sm:flex-1 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-300 dark:placeholder-blue-200 focus:outline-none focus:border-[var(--primary-color)] focus:ring-2 focus:ring-primary-30 text-sm transition-all duration-200"
               />
               <Button 
+                type="button"
                 size="sm"
                 className="w-full sm:w-auto text-white px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 whitespace-nowrap ieee-button-primary"
+                onClick={handleSubscribe}
+                disabled={isSubscribing}
               >
-                {t.footer.newsletter.subscribe}
+                {isSubscribing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t.footer.newsletter.subscribing ?? 'Gönderiliyor...'}
+                  </>
+                ) : (
+                  <>{t.footer.newsletter.subscribe}</>
+                )}
               </Button>
             </div>
           </div>

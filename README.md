@@ -28,11 +28,26 @@ Modern, responsive redesign of the IEEE ESTU Student Branch website.
 npm install
 ```
 
-### Run the development server
+### Run the backend API
+```bash
+cd server
+npm install
+npm run dev
+```
+The API listens on `http://localhost:4000` by default. Copy `server/.env.example` to `server/.env` and set MongoDB, JWT, Google API, and email credentials before running in production.
+
+Key backend environment variables:
+- `MONGODB_URI`: MongoDB connection string
+- `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`: secrets for admin authentication tokens
+- `GOOGLE_*`: credentials for Google Tables, Gmail, and Google Groups automations
+- `DEFAULT_INFO_EMAIL`, `SPONSORSHIP_CALENDAR_LINK`: addresses used for outgoing notifications
+- `RECAPTCHA_SECRET_KEY`: enables server-side reCAPTCHA validation when provided
+
+### Run the frontend development server
 ```bash
 npm run dev
 ```
-The site is served at `http://localhost:5173`. Append `-- --host` to expose it on your LAN.
+The site is served at `http://localhost:5173`. Append `-- --host` to expose it on your LAN. Configure `VITE_API_BASE_URL` in a `.env.local` file if your backend runs on a different origin.
 
 ### Create a production build
 ```bash

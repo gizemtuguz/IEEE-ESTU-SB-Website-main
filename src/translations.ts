@@ -203,7 +203,11 @@ export const translations = {
       title: "Etkinliklerimiz",
       subtitle:
         "IEEE ESTU Öğrenci Kolu olarak düzenlediğimiz workshop'lar, seminerler, yarışmalar ve sosyal etkinliklerle üyelerimizin gelişimine katkı sağlıyoruz.",
+      viewAll: "Tüm Etkinlikler",
+      emptyState:
+        "Yaklaşan etkinlik bulunmuyor. Yeni etkinlikler yakında eklenecek.",
       upcoming: "Yaklaşan Etkinlikler",
+      current: "Güncel Etkinlikler",
       past: "Geçmiş Etkinlikler",
       details: "Detaylar",
       register: "Kayıt Ol",
@@ -283,6 +287,8 @@ export const translations = {
           "Kişisel verilerimin IEEE ESTU Öğrenci Kolu tarafından iletişim amacıyla işlenmesine onay veriyorum.",
         send: "Mesajı Gönder",
         sending: "Gönderiliyor...",
+        success: "Mesajınız başarıyla gönderildi!",
+        error: "Mesaj gönderilirken bir hata oluştu.",
       },
       map: {
         title: "Konum Haritası",
@@ -332,6 +338,9 @@ export const translations = {
           "Etkinliklerimiz ve duyurularımızdan haberdar olun.",
         placeholder: "E-posta adresiniz",
         subscribe: "Abone Ol",
+        subscribing: "Kaydediliyor...",
+        success: "Bültene başarıyla abone oldunuz!",
+        error: "Lütfen geçerli bir e-posta adresi girin.",
       },
       rights: "Tüm hakları saklıdır.",
       madeWith: "Bu site",
@@ -397,6 +406,7 @@ export const translations = {
     common: {
       scrollTop: "Yukarı çık",
       participants: "kişi",
+      loading: "Yükleniyor...",
     },
     // Membership Page
     membershipPage: {
@@ -650,7 +660,10 @@ export const translations = {
       title: "Our Events",
       subtitle:
         "As IEEE ESTU Student Branch, we contribute to the development of our members through workshops, seminars, competitions, and social events.",
+      viewAll: "View All Events",
+      emptyState: "No upcoming events at the moment. New events will be announced soon.",
       upcoming: "Upcoming Events",
+      current: "Current Events",
       past: "Past Events",
       details: "Details",
       register: "Register",
@@ -730,6 +743,8 @@ export const translations = {
           "I consent to the processing of my personal data by IEEE ESTU Student Branch for communication purposes.",
         send: "Send Message",
         sending: "Sending...",
+        success: "Your message has been sent successfully!",
+        error: "An error occurred while sending your message.",
       },
       map: {
         title: "Location Map",
@@ -779,6 +794,9 @@ export const translations = {
           "Stay informed about our events and announcements.",
         placeholder: "Your email address",
         subscribe: "Subscribe",
+        subscribing: "Submitting...",
+        success: "You have successfully subscribed to the newsletter!",
+        error: "Please enter a valid email address.",
       },
       rights: "All rights reserved.",
       madeWith: "This site was made with",
@@ -844,6 +862,7 @@ export const translations = {
     common: {
       scrollTop: "Scroll to top",
       participants: "people",
+      loading: "Loading...",
     },
     // Membership Page
     membershipPage: {

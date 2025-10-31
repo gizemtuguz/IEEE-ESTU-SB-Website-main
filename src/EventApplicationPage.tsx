@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { Event, EventFormField } from "./types/api";
 import { Button } from "./components/ui/button";
 import { Card, CardContent } from "./components/ui/card";
 import { Input } from "./components/ui/input";
@@ -19,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select";
+import { RadioGroup, RadioGroupItem } from "./components/ui/radio-group";
 import {
   ArrowLeft,
   Calendar,
@@ -44,6 +46,7 @@ import {
 import { Separator } from "./components/ui/separator";
 import { translations, Language } from "./translations";
 import { toast } from "sonner@2.0.3";
+import { api } from "./lib/api";
 import ieeeLogo from "./assets/logo.png";
 import ieeeIcon from "./assets/logo_mobil.png";
 
@@ -54,6 +57,12 @@ export default function EventApplicationPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [kvkkConsent, setKvkkConsent] = useState(false);
   const [isKvkkOpen, setIsKvkkOpen] = useState(false);
+  const [eventSlug, setEventSlug] = useState<string | null>(null);
+  const [eventDetails, setEventDetails] = useState<Event | null>(null);
+  const [formFields, setFormFields] = useState<EventFormField[]>([]);
+  const [dynamicResponses, setDynamicResponses] = useState<Record<string, string | string[]>>({});
+  const [isLoadingEvent, setIsLoadingEvent] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -83,6 +92,39 @@ export default function EventApplicationPage() {
     if (savedTheme === "dark") {
       setIsDarkMode(true);
       document.documentElement.classList.add("dark");
+    }
+
+    const path = window.location.pathname;
+    const slugMatch = path.match(/(?:events|etkinlikler)\/([^/]+)/);
+    const slug = slugMatch?.[1] ?? null;
+
+    if (slug) {
+      setEventSlug(slug);
+      setIsLoadingEvent(true);
+      setLoadError(null);
+
+      void (async () => {
+        try {
+          const eventData = (await api.getEvent(slug)) as Event;
+          setEventDetails(eventData);
+          const sortedFields = [...(eventData.formFields ?? [])].sort(
+            (a, b) => (a.order ?? 0) - (b.order ?? 0)
+          );
+          setFormFields(sortedFields);
+          const defaults: Record<string, string | string[]> = {};
+          sortedFields.forEach((field) => {
+            defaults[field.id] = field.type === "checkbox" ? [] : "";
+          });
+          setDynamicResponses(defaults);
+        } catch (error) {
+          setLoadError((error as Error).message ?? "Etkinlik yüklenemedi");
+        } finally {
+          setIsLoadingEvent(false);
+        }
+      })();
+    } else {
+      setIsLoadingEvent(false);
+      setLoadError("Etkinlik bulunamadı");
     }
   }, []);
 
@@ -165,15 +207,279 @@ export default function EventApplicationPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleDynamicChange = (field: EventFormField, value: string | string[]) => {
+    setDynamicResponses((prev) => ({ ...prev, [field.id]: value }));
+  };
+
+  const handleCheckboxToggle = (field: EventFormField, option: string, checked: boolean) => {
+    setDynamicResponses((prev) => {
+      const current = Array.isArray(prev[field.id]) ? (prev[field.id] as string[]) : [];
+      const next = checked
+        ? [...current, option]
+        : current.filter((item) => item !== option);
+      return { ...prev, [field.id]: next };
+    });
+  };
+
+  const renderDynamicField = (field: EventFormField) => {
+    const value = dynamicResponses[field.id];
+    const label = field.label;
+    const requiredMark = field.required ? " *" : "";
+
+    switch (field.type) {
+      case "textarea":
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.id}>
+              {label}
+              {requiredMark}
+            </Label>
+            <Textarea
+              id={field.id}
+              required={field.required}
+              value={(value as string) ?? ""}
+              onChange={(event) => handleDynamicChange(field, event.target.value)}
+              placeholder={field.helperText}
+              className="rounded-xl"
+            />
+          </div>
+        );
+      case "select":
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label>
+              {label}
+              {requiredMark}
+            </Label>
+            <Select
+              required={field.required}
+              value={(value as string) ?? ""}
+              onValueChange={(selected) => handleDynamicChange(field, selected)}
+            >
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder={field.helperText ?? label} />
+              </SelectTrigger>
+              <SelectContent>
+                {(field.options ?? []).map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      case "radio":
+        return (
+          <div key={field.id} className="space-y-3">
+            <Label>
+              {label}
+              {requiredMark}
+            </Label>
+            <RadioGroup
+              required={field.required}
+              value={(value as string) ?? ""}
+              onValueChange={(selected) => handleDynamicChange(field, selected)}
+            >
+              {(field.options ?? []).map((option) => (
+                <label key={option} className="flex items-center gap-3 text-sm">
+                  <RadioGroupItem value={option} />
+                  <span>{option}</span>
+                </label>
+              ))}
+            </RadioGroup>
+          </div>
+        );
+      case "checkbox":
+        return (
+          <div key={field.id} className="space-y-3">
+            <Label>
+              {label}
+              {requiredMark}
+            </Label>
+            <div className="space-y-2">
+              {(field.options ?? []).map((option) => {
+                const current = Array.isArray(value) ? (value as string[]) : [];
+                const checked = current.includes(option);
+                return (
+                  <label key={option} className="flex items-center gap-3 text-sm">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={(state) =>
+                        handleCheckboxToggle(field, option, state === true)
+                      }
+                    />
+                    <span>{option}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        );
+      case "date":
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.id}>
+              {label}
+              {requiredMark}
+            </Label>
+            <Input
+              id={field.id}
+              type="date"
+              required={field.required}
+              value={(value as string) ?? ""}
+              onChange={(event) => handleDynamicChange(field, event.target.value)}
+              className="rounded-xl"
+            />
+          </div>
+        );
+      case "email":
+      case "phone":
+      case "number":
+      case "text":
+      default:
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.id}>
+              {label}
+              {requiredMark}
+            </Label>
+            <Input
+              id={field.id}
+              type={field.type === "phone" ? "tel" : field.type === "number" ? "number" : field.type}
+              required={field.required}
+              value={(value as string) ?? ""}
+              onChange={(event) => handleDynamicChange(field, event.target.value)}
+              placeholder={field.helperText}
+              className="rounded-xl"
+            />
+          </div>
+        );
+    }
+  };
+
+  const translationKey = (language === "tr" ? "tr" : "en") as "tr" | "en";
+  const eventTranslation = eventDetails?.translations?.[translationKey] ?? eventDetails?.translations?.tr;
+  const formattedStartDate = eventDetails
+    ? new Date(eventDetails.startDate).toLocaleDateString(
+        language === "tr" ? "tr-TR" : "en-US",
+        {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }
+      )
+    : undefined;
+  const formattedTimeRange = eventDetails?.startTime
+    ? `${eventDetails.startTime}${eventDetails.endTime ? ` - ${eventDetails.endTime}` : ""}`
+    : undefined;
+
+  const infoCards = eventDetails
+    ? [
+        {
+          icon: <Calendar className="h-8 w-8" />,
+          title: language === "tr" ? "Etkinlik Tarihi" : "Event Date",
+          description: formattedStartDate ?? "",
+        },
+        {
+          icon: <Clock className="h-8 w-8" />,
+          title: language === "tr" ? "Saat" : "Time",
+          description: formattedTimeRange ?? "-",
+        },
+        {
+          icon: <MapPin className="h-8 w-8" />,
+          title: language === "tr" ? "Konum" : "Location",
+          description: eventTranslation?.location ?? "-",
+        },
+        {
+          icon: <Users className="h-8 w-8" />,
+          title: language === "tr" ? "Katılımcı Bilgisi" : "Participants",
+          description: eventTranslation?.participants ?? (language === "tr" ? "Sınırlı Kontenjan" : "Limited Seats"),
+        },
+      ]
+    : [
+        {
+          icon: <Calendar className="h-8 w-8" />,
+          title: language === "tr" ? "Düzenli Etkinlikler" : "Regular Events",
+          description:
+            language === "tr"
+              ? "Yıl boyunca planlanan etkinliklerle takvimimizi dolu tutuyoruz."
+              : "We keep the calendar full with events all year long.",
+        },
+        {
+          icon: <Clock className="h-8 w-8" />,
+          title: language === "tr" ? "Esnek Süreler" : "Flexible Durations",
+          description:
+            language === "tr"
+              ? "Etkinlik süreleri içeriğe göre değişir; size uyan zamanı bulabilirsiniz."
+              : "Durations adapt to each format so you can join when it fits.",
+        },
+        {
+          icon: <MapPin className="h-8 w-8" />,
+          title: "ESTU",
+          description:
+            language === "tr"
+              ? "Kampüs içi ve çevrim içi buluşmalarla her yerden katılın."
+              : "Join on campus or online through our hybrid sessions.",
+        },
+        {
+          icon: <Users className="h-8 w-8" />,
+          title: language === "tr" ? "Açık Katılım" : "Open Access",
+          description:
+            language === "tr"
+              ? "IEEE ESTU topluluğundaki herkes katılabilir."
+              : "Everyone in the IEEE ESTU community can participate.",
+        },
+      ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!eventSlug) {
+      toast.error(
+        language === "tr"
+          ? "Bu etkinlik için başvuru yolu bulunamadı."
+          : "Cannot determine event application path."
+      );
+      return;
+    }
+
+    if (!eventDetails) {
+      toast.error(
+        language === "tr"
+          ? "Etkinlik bilgileri yüklenemedi."
+          : "Event details could not be loaded."
+      );
+      return;
+    }
+
+    if (!kvkkConsent) {
+      toast.error(
+        language === "tr"
+          ? "KVKK metnini onaylamalısınız."
+          : "You must accept the KVKK notice."
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Simulate form submission (replace with actual API call)
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const answers = formFields.map((field) => {
+        const value = dynamicResponses[field.id];
+        return {
+          fieldId: field.id,
+          question: field.label,
+          value: value ?? (field.type === "checkbox" ? [] : ""),
+        };
+      });
 
-      // Show success message
+      await api.submitEventApplication(eventSlug, {
+        ...formData,
+        answers,
+        language,
+      });
+
       toast.success(
         language === "tr"
           ? "Başvurunuz başarıyla alındı!"
@@ -181,29 +487,33 @@ export default function EventApplicationPage() {
       );
 
       setIsSubmitted(true);
-
-      // Reset form after 3 seconds
-      setTimeout(() => {
-        setFormData({
-          fullName: "",
-          email: "",
-          phone: "",
-          studentId: "",
-          department: "",
-          year: "",
-          eventInterest: "",
-          experience: "",
-          message: "",
+      setFormData({
+        fullName: "",
+        email: "",
+        phone: "",
+        studentId: "",
+        department: "",
+        year: "",
+        eventInterest: "",
+        experience: "",
+        message: "",
+      });
+      setDynamicResponses((prev) => {
+        const reset: Record<string, string | string[]> = {};
+        formFields.forEach((field) => {
+          reset[field.id] = field.type === "checkbox" ? [] : "";
         });
-        setKvkkConsent(false);
-        setIsSubmitted(false);
-      }, 3000);
+        return reset;
+      });
+      setKvkkConsent(false);
+      setTimeout(() => setIsSubmitted(false), 3500);
     } catch (error) {
       toast.error(
         language === "tr"
-          ? "Bir hata oluştu. Lütfen tekrar deneyin."
-          : "An error occurred. Please try again."
+          ? "Başvurunuz gönderilirken bir hata oluştu."
+          : "An error occurred while submitting your application."
       );
+      console.error(error);
     } finally {
       setIsSubmitting(false);
     }
@@ -334,56 +644,35 @@ export default function EventApplicationPage() {
           {/* Page Header */}
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
-              {t.events.applicationPage.title}
+              {eventTranslation?.title ?? t.events.applicationPage.title}
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-2">
-              {t.events.applicationPage.subtitle}
+              {eventTranslation?.location
+                ? `${eventTranslation.location}${formattedStartDate ? " · " + formattedStartDate : ""}`
+                : t.events.applicationPage.subtitle}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              {t.events.applicationPage.description}
+              {eventTranslation?.description ?? t.events.applicationPage.description}
             </p>
           </div>
+
+          {isLoadingEvent && (
+            <div className="mb-8 text-center text-muted-foreground">
+              {language === "tr"
+                ? "Etkinlik bilgileri yükleniyor..."
+                : "Loading event details..."}
+            </div>
+          )}
+          {loadError && !isLoadingEvent && (
+            <div className="mb-8 text-center text-red-500">
+              {loadError}
+            </div>
+          )}
 
           {/* Event Info Cards */}
           <section id="event-info" className="mb-12">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: <Calendar className="h-8 w-8" />,
-                title:
-                  language === "tr"
-                    ? "Düzenli Etkinlikler"
-                    : "Regular Events",
-                description:
-                  language === "tr"
-                    ? "Yıl boyunca planlanan etkinliklerle takvimimizi dolu tutuyoruz."
-                    : "We keep the calendar full with events all year long.",
-              },
-              {
-                icon: <Clock className="h-8 w-8" />,
-                title: language === "tr" ? "Esnek Süreler" : "Flexible Durations",
-                description:
-                  language === "tr"
-                    ? "Etkinlik süreleri içeriğe göre değişir; size uyan zamanı bulabilirsiniz."
-                    : "Durations adapt to each format so you can join when it fits.",
-              },
-              {
-                icon: <MapPin className="h-8 w-8" />,
-                title: "ESTU",
-                description:
-                  language === "tr"
-                    ? "Kampüs içi ve çevrim içi buluşmalarla her yerden katılın."
-                    : "Join on campus or online through our hybrid sessions.",
-              },
-              {
-                icon: <Users className="h-8 w-8" />,
-                title: language === "tr" ? "Açık Katılım" : "Open Access",
-                description:
-                  language === "tr"
-                    ? "IEEE ESTU topluluğundaki herkes katılabilir."
-                    : "Everyone in the IEEE ESTU community can participate.",
-              },
-            ].map((item, index) => (
+            {infoCards.map((item, index) => (
               <Card
                 key={index}
                 className="text-center hover:shadow-lg dark:hover:shadow-primary-20 dark:hover:ring-1 dark:hover:ring-primary-50 transition-shadow duration-300 rounded-2xl border-0 bg-white dark:bg-slate-950"
@@ -716,6 +1005,22 @@ export default function EventApplicationPage() {
                         </Select>
                       </div>
 
+                      {formFields.length > 0 && (
+                        <>
+                          <Separator />
+                          <div className="space-y-4">
+                            <h3 className="text-xl font-bold text-[var(--primary-color)] dark:text-[#60a5fa]">
+                              {language === "tr"
+                                ? "Etkinliğe Özel Sorular"
+                                : "Event Specific Questions"}
+                            </h3>
+                            <div className="space-y-4">
+                              {formFields.map((field) => renderDynamicField(field))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
                       <div className="space-y-2">
                         <Label htmlFor="message">
                           {language === "tr"
@@ -811,7 +1116,12 @@ export default function EventApplicationPage() {
                   <div className="flex justify-end pt-4">
                     <Button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={
+                        isSubmitting ||
+                        isLoadingEvent ||
+                        !!loadError ||
+                        !eventDetails
+                      }
                       className="ieee-button-primary hover:opacity-90 transition-opacity text-white px-8 py-3 rounded-xl font-medium duration-200 shadow-md"
                     >
                       {isSubmitting ? (

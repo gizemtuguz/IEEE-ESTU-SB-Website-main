@@ -17,17 +17,35 @@ import { useLanguage } from "./contexts/LanguageContext";
 import EventApplicationPage from "./EventApplicationPage";
 import MembershipPage from "./MembershipPage";
 import EventsPage from "./EventsPage";
+import AdminLoginPage from "./AdminLoginPage";
+import AdminPanelPage from "./AdminPanelPage";
+import AdminEventFormPage from "./AdminEventFormPage";
 
 function AppContent() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentPage, setCurrentPage] = useState("home");
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const { t } = useLanguage();
 
   useEffect(() => {
     // Check for route in URL
-    const path = window.location.pathname;
-    if (
+    const determineRoute = () => {
+      const path = window.location.pathname;
+      if (path.startsWith("/admin-login")) {
+        setCurrentPage("admin-login");
+        setSelectedEventId(null);
+      } else if (path === "/admin/events/new") {
+        setCurrentPage("admin-event-new");
+        setSelectedEventId(null);
+      } else if (/^\/admin\/events\/[^/]+\/edit$/.test(path)) {
+        const segments = path.split("/");
+        setSelectedEventId(segments[3] ?? null);
+        setCurrentPage("admin-event-edit");
+      } else if (path.startsWith("/admin")) {
+        setCurrentPage("admin");
+        setSelectedEventId(null);
+      } else if (
       path.includes("/events") ||
       path.includes("/etkinlikler")
     ) {
@@ -45,7 +63,21 @@ function AppContent() {
       path.includes("/uyelik")
     ) {
       setCurrentPage("membership");
-    }
+      setSelectedEventId(null);
+      } else {
+        setCurrentPage("home");
+        setSelectedEventId(null);
+      }
+    };
+
+    determineRoute();
+
+    const handlePopState = () => {
+      determineRoute();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("hashchange", handlePopState);
 
     // Check localStorage for dark mode preference
     const savedTheme = localStorage.getItem("theme");
@@ -60,7 +92,11 @@ function AppContent() {
 
     window.addEventListener("scroll", handleScroll);
     return () =>
-      window.removeEventListener("scroll", handleScroll);
+      {
+        window.removeEventListener("scroll", handleScroll);
+        window.removeEventListener("popstate", handlePopState);
+        window.removeEventListener("hashchange", handlePopState);
+      };
   }, []);
 
   const toggleDarkMode = () => {
@@ -86,6 +122,22 @@ function AppContent() {
   };
 
   // Show event application page if route matches
+  if (currentPage === "admin-login") {
+    return <AdminLoginPage />;
+  }
+
+  if (currentPage === "admin") {
+    return <AdminPanelPage />;
+  }
+
+  if (currentPage === "admin-event-new") {
+    return <AdminEventFormPage mode="create" />;
+  }
+
+  if (currentPage === "admin-event-edit" && selectedEventId) {
+    return <AdminEventFormPage mode="edit" eventId={selectedEventId} />;
+  }
+
   if (currentPage === "events-application") {
     return <EventApplicationPage />;
   } else if (currentPage === "membership") {

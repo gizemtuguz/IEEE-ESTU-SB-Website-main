@@ -13,6 +13,13 @@ import {
   SelectValue,
 } from "./components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./components/ui/dialog";
+import {
   ArrowLeft,
   Loader2,
   CheckCircle2,
@@ -38,12 +45,23 @@ import { translations, Language } from "./translations";
 import { toast } from "sonner@2.0.3";
 import ieeeLogo from "./assets/logo.png";
 import ieeeIcon from "./assets/logo_mobil.png";
+import { api } from "./lib/api";
 
 export default function MembershipPage() {
   const [language, setLanguage] = useState<Language>("tr");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [membershipId, setMembershipId] = useState<string | null>(null);
+  const [showCommitteeDialog, setShowCommitteeDialog] = useState(false);
+  const [isCommitteeSubmitting, setIsCommitteeSubmitting] = useState(false);
+  const [committeeData, setCommitteeData] = useState({
+    fullName: "",
+    email: "",
+    primaryCommittee: "",
+    secondaryCommittee: "",
+    motivations: "",
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -141,10 +159,24 @@ export default function MembershipPage() {
     setIsSubmitting(true);
 
     try {
-      // Simulate form submission (replace with actual API call)
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const membershipResponse = (await api.submitMembershipApplication({
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        studentId: formData.studentId,
+        department: formData.department,
+        year: formData.year,
+        motivation: formData.whyJoin,
+        experience: [
+          formData.skills,
+          formData.interests.length
+            ? `${language === "tr" ? "İlgi Alanları" : "Interests"}: ${formData.interests.join(", ")}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" | "),
+      })) as { membershipId?: string };
 
-      // Show success message
       toast.success(
         language === "tr"
           ? "Üyelik başvurunuz başarıyla alındı!"
@@ -152,6 +184,15 @@ export default function MembershipPage() {
       );
 
       setIsSubmitted(true);
+      setMembershipId(membershipResponse.membershipId ?? null);
+      setCommitteeData({
+        fullName: formData.fullName,
+        email: formData.email,
+        primaryCommittee: "",
+        secondaryCommittee: "",
+        motivations: "",
+      });
+      setShowCommitteeDialog(true);
 
       // Reset form after 3 seconds
       setTimeout(() => {
@@ -180,6 +221,68 @@ export default function MembershipPage() {
     }
   };
 
+  const handleCommitteeChange = (name: string, value: string) => {
+    setCommitteeData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCommitteeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!membershipId) {
+      toast.error(
+        language === "tr"
+          ? "Önce üyelik başvurunuzu tamamlayın."
+          : "Please complete the membership application first.",
+      );
+      return;
+    }
+
+    if (!committeeData.primaryCommittee) {
+      toast.error(
+        language === "tr"
+          ? "Lütfen birincil komite seçin."
+          : "Please choose a primary committee.",
+      );
+      return;
+    }
+
+    setIsCommitteeSubmitting(true);
+
+    try {
+      await api.submitCommitteeSelection({
+        membershipId,
+        email: committeeData.email || formData.email,
+        fullName: committeeData.fullName || formData.fullName,
+        primaryCommittee: committeeData.primaryCommittee,
+        secondaryCommittee: committeeData.secondaryCommittee,
+        motivations: committeeData.motivations,
+      });
+
+      toast.success(
+        language === "tr"
+          ? "Komite tercihiniz kaydedildi!"
+          : "Your committee selection has been saved!",
+      );
+      setShowCommitteeDialog(false);
+      setCommitteeData({
+        fullName: "",
+        email: "",
+        primaryCommittee: "",
+        secondaryCommittee: "",
+        motivations: "",
+      });
+    } catch (error) {
+      toast.error(
+        language === "tr"
+          ? "Komite tercihi kaydedilirken bir hata oluştu."
+          : "An error occurred while saving your committee selection.",
+      );
+      console.error(error);
+    } finally {
+      setIsCommitteeSubmitting(false);
+    }
+  };
+
   const benefits = [
     {
       icon: <Lightbulb className="h-6 w-6" />,
@@ -205,6 +308,16 @@ export default function MembershipPage() {
       description:
         t.membershipPage.benefits.items[3].description,
     },
+  ];
+
+  const committeeOptions = [
+    { value: "aess", label: t.committees.aess.fullName },
+    { value: "comsoc", label: t.committees.comsoc.fullName },
+    { value: "cs", label: t.committees.cs.fullName },
+    { value: "pes", label: t.committees.pes.fullName },
+    { value: "wie", label: t.committees.wie.fullName },
+    { value: "kok", label: t.committees.kok.fullName },
+    { value: "pr", label: t.committees.pr.fullName },
   ];
 
 const interestOptions =
@@ -950,6 +1063,146 @@ const interestOptions =
           </div>
         </div>
       </footer>
+
+      <Dialog open={showCommitteeDialog} onOpenChange={setShowCommitteeDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {language === "tr"
+                ? "Üye oldun! Şimdi komiteni seç"
+                : "You're in! Choose your committee"}
+            </DialogTitle>
+            <DialogDescription>
+              {language === "tr"
+                ? "Aşağıdaki formu doldurarak ilgilendiğin komiteyi seçebilirsin."
+                : "Let us know which committee you want to join by filling the form below."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCommitteeSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="committee-full-name">
+                {language === "tr" ? "Ad Soyad" : "Full Name"}
+              </Label>
+              <Input
+                id="committee-full-name"
+                value={committeeData.fullName}
+                onChange={(event) =>
+                  handleCommitteeChange("fullName", event.target.value)
+                }
+                placeholder={language === "tr" ? "Adınızı girin" : "Enter your name"}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="committee-email">E-mail</Label>
+              <Input
+                id="committee-email"
+                type="email"
+                value={committeeData.email}
+                onChange={(event) =>
+                  handleCommitteeChange("email", event.target.value)
+                }
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                {language === "tr" ? "Birincil Komite *" : "Primary Committee *"}
+              </Label>
+              <Select
+                value={committeeData.primaryCommittee}
+                onValueChange={(value) => handleCommitteeChange("primaryCommittee", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      language === "tr"
+                        ? "Birincil komitenizi seçin"
+                        : "Select your primary committee"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {committeeOptions.map((committee) => (
+                    <SelectItem key={committee.value} value={committee.value}>
+                      {committee.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>
+                {language === "tr"
+                  ? "İkinci Tercih (Opsiyonel)"
+                  : "Secondary Committee (Optional)"}
+              </Label>
+              <Select
+                value={committeeData.secondaryCommittee}
+                onValueChange={(value) => handleCommitteeChange("secondaryCommittee", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      language === "tr"
+                        ? "İkinci tercihinizi seçin"
+                        : "Select a secondary committee"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">
+                    {language === "tr" ? "Tercih yapmayacağım" : "No secondary preference"}
+                  </SelectItem>
+                  {committeeOptions.map((committee) => (
+                    <SelectItem key={committee.value} value={committee.value}>
+                      {committee.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="committee-motivations">
+                {language === "tr"
+                  ? "Motivasyon / Beklentiler"
+                  : "Motivation / Expectations"}
+              </Label>
+              <Textarea
+                id="committee-motivations"
+                value={committeeData.motivations}
+                onChange={(event) =>
+                  handleCommitteeChange("motivations", event.target.value)
+                }
+                placeholder={
+                  language === "tr"
+                    ? "Komiteden beklentilerini ve katkılarını paylaş."
+                    : "Share what you expect and how you plan to contribute."
+                }
+                className="min-h-[120px]"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full ieee-button-primary"
+              disabled={isCommitteeSubmitting}
+            >
+              {isCommitteeSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {language === "tr" ? "Kaydediliyor..." : "Saving..."}
+                </>
+              ) : (
+                <>{language === "tr" ? "Tercihimi Gönder" : "Submit Choice"}</>
+              )}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

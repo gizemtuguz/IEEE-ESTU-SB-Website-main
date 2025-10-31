@@ -1,10 +1,51 @@
+import { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Building2 } from 'lucide-react';
+import { Building2, Loader2 } from 'lucide-react';
+import { toast } from 'sonner@2.0.3';
+import { api } from '../lib/api';
 
 export function Sponsors() {
   const { t } = useLanguage();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    contactName: '',
+    organization: '',
+  });
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await api.submitSponsorshipLead({
+        email: formData.email,
+        contactName: formData.contactName,
+        organization: formData.organization,
+      });
+      toast.success(
+        t.language === 'tr'
+          ? 'Teşekkürler! Ekip en kısa sürede sizinle iletişime geçecek.'
+          : 'Thank you! Our team will be in touch shortly.'
+      );
+      setFormData({ email: '', contactName: '', organization: '' });
+      setIsDialogOpen(false);
+    } catch (error) {
+      toast.error(
+        t.language === 'tr'
+          ? 'Bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
+          : 'Something went wrong. Please try again later.'
+      );
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <section id="sponsors" className="py-20 bg-gray-100 dark:bg-slate-900">
@@ -49,17 +90,83 @@ export function Sponsors() {
             <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
               {t.sponsors.partnership.description}
             </p>
-            <a href="#contact">
-              <Button 
-                size="lg"
-                className="ieee-gradient-button text-white hover:opacity-90 px-8 py-3 rounded-xl font-medium transition-opacity duration-200"
-              >
-                {t.sponsors.partnership.button}
-              </Button>
-            </a>
+            <Button 
+              size="lg"
+              className="ieee-gradient-button text-white hover:opacity-90 px-8 py-3 rounded-xl font-medium transition-opacity duration-200"
+              onClick={() => setIsDialogOpen(true)}
+            >
+              {t.sponsors.partnership.button}
+            </Button>
           </div>
         </div>
       </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t.language === 'tr'
+                ? 'Sponsorluk için iletişime geç'
+                : 'Request Sponsorship Call'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="sponsor-email">E-posta</Label>
+              <Input
+                id="sponsor-email"
+                type="email"
+                value={formData.email}
+                onChange={(event) =>
+                  setFormData((prev) => ({ ...prev, email: event.target.value }))
+                }
+                placeholder="company@example.com"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sponsor-name">
+                {t.language === 'tr' ? 'İsim' : 'Name'}
+              </Label>
+              <Input
+                id="sponsor-name"
+                value={formData.contactName}
+                onChange={(event) =>
+                  setFormData((prev) => ({ ...prev, contactName: event.target.value }))
+                }
+                placeholder={t.language === 'tr' ? 'İletişim kişisi' : 'Contact person'}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sponsor-organization">
+                {t.language === 'tr' ? 'Kurum / Şirket' : 'Organization'}
+              </Label>
+              <Input
+                id="sponsor-organization"
+                value={formData.organization}
+                onChange={(event) =>
+                  setFormData((prev) => ({ ...prev, organization: event.target.value }))
+                }
+                placeholder="IEEE Partner"
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full ieee-button-primary"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t.language === 'tr' ? 'Gönderiliyor...' : 'Submitting...'}
+                </>
+              ) : (
+                t.language === 'tr' ? 'Talep Gönder' : 'Submit Request'
+              )}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
